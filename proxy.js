@@ -40,7 +40,7 @@ ProxyJS.getSubjectKeyIdentifier = function(certificate)
  * @param privateKey    RSAKey object with the user"s private key
  * @return A PEM encoded signed proxy
  */
-ProxyJS.signRequest = function(request, userDn, certificate, privateKey)
+ProxyJS.signRequest = function(request, userDn, certificate, privateKey, lifetime)
 {
     if (!request instanceof ASN11)
         throw "request is not an instance of ASN11";
@@ -48,6 +48,10 @@ ProxyJS.signRequest = function(request, userDn, certificate, privateKey)
         throw "certificate is not an instance of X509";
     if (!privateKey instanceof RSAKey)
         throw "privateKey is not an instance of RSAKey";
+    if (typeof lifetime !== "number")
+        throw "lifetime is not an integer";
+    if (lifetime < 1)
+        throw "lifetime must be at least 1 hour";
 
         
     var proxyPublicKey = request.getCSRPubKey();
@@ -88,7 +92,8 @@ ProxyJS.signRequest = function(request, userDn, certificate, privateKey)
 		"str" : ProxyJS.Util.getUTCDateAsString(notBefore)
 	});
 	var notAfter = new Date();
-	notAfter.setUTCHours(notBefore.getUTCHours() + 12);
+	notAfter.setUTCHours(notAfter.getUTCHours() + lifetime);
+	console.log("Proxy will expire the " + lifetime);
 	tbsc.setNotAfterByParam({
 		"str" : ProxyJS.Util.getUTCDateAsString(notAfter)
 	});
