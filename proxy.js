@@ -36,7 +36,7 @@ ProxyJS.getSubjectKeyIdentifier = function(certificate)
 /** Sign the request
  * @param request       ASN11 object containing the request
  * @param userDn        User"s DN
- * @param certificate   X509 object containing the user"s public certificate
+ * @param certificate   X509 object containing the user's public certificate
  * @param privateKey    RSAKey object with the user"s private key
  * @return A PEM encoded signed proxy
  */
@@ -53,22 +53,22 @@ ProxyJS.signRequest = function(request, userDn, certificate, privateKey, lifetim
     if (lifetime < 1)
         throw "lifetime must be at least 1 hour";
 
-        
+
     var proxyPublicKey = request.getCSRPubKey();
     var proxyPublicRSA = new RSAKey();
     proxyPublicRSA.setPublic(
         proxyPublicKey.modulus.replace(/ /g, ""),
         proxyPublicKey.exponent.replace(/ /g, "")
     );
-    
+
     // Validate certificate and private key modulus
     if (privateKey.n.compareTo(certificate.subjectPublicKeyRSA.n) != 0) {
         throw "The RSA private key modulus and the public certificate modulus do not match!";
     }
-    
+
     // Create to-be-signed certificate and initialize
     var tbsc = new KJUR.asn1.x509.TBSCertificate();
-    
+
     tbsc.setSerialNumberByParam({
         "int" : certificate.getSerialNumberHex()
     });
@@ -78,13 +78,15 @@ ProxyJS.signRequest = function(request, userDn, certificate, privateKey, lifetim
     tbsc.setIssuerByParam({
         "str" : userDn
     });
+    tbsc.asn1Issuer.hTLV = certificate.getSubjectHex();
+
     tbsc.setSubjectByParam({
         "str" : ProxyJS.Util.getProxyDn(userDn)
     });
     tbsc.setSubjectPublicKeyByParam({
         "rsakey" : proxyPublicRSA
     });
-    
+
     // Validity
     var notBefore = new Date();
     notBefore.setUTCHours(notBefore.getUTCHours());
@@ -97,22 +99,22 @@ ProxyJS.signRequest = function(request, userDn, certificate, privateKey, lifetim
     tbsc.setNotAfterByParam({
         "str" : ProxyJS.Util.getUTCDateAsString(notAfter)
     });
-    
+
     // Extensions
     tbsc.appendExtension(new KJUR.asn1.x509.BasicConstraints({"cA": false, "critical": true}));
     // 101 to set "Digital Signature, Key Encipherment". 0 means disabled "Non Repudiation"
     tbsc.appendExtension(new KJUR.asn1.x509.KeyUsage({"bin":"101", "critical":true}));
-    
+
     var subjectKeyId = ProxyJS.getSubjectKeyIdentifier(certificate);
     console.log("Subject key identifier: "+ subjectKeyId);
     var paramAKI = {"kid": {"hex": subjectKeyId}, "issuer": certificate.getIssuerHex(), "critical": false};
     tbsc.appendExtension(new KJUR.asn1.x509.AuthorityKeyIdentifier(paramAKI));
-    
+
     // RFC 3820 extensions
     tbsc.appendExtension(new ProxyJS.ProxyCertInfo({
         "critical": true, "limited": true, "length": 0
     }));
-    
+
     // Sign
     var cert = new KJUR.asn1.x509.Certificate({
         "tbscertobj" : tbsc,
@@ -121,7 +123,7 @@ ProxyJS.signRequest = function(request, userDn, certificate, privateKey, lifetim
         "rsaprvpas" : "empty"
     });
     cert.sign();
-    
+
     return cert;
 }
 
