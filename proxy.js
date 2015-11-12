@@ -73,7 +73,7 @@ ProxyJS.signRequest = function(request, userDn, certificate, privateKey, lifetim
         "int" : certificate.getSerialNumberHex()
     });
     tbsc.setSignatureAlgByParam({
-        "name" : "SHA1withRSA"
+        "name" : "SHA512withRSA"
     });
     tbsc.setIssuerByParam({
         "str" : userDn
